@@ -72,7 +72,12 @@ class FileLoggerTree extends LogTree {
   Directory get directory => _directory;
 
   Future<void> _init() async {
-    String baseDirPath = (await getApplicationDocumentsDirectory()).path;
+    String baseDirPath;
+    if (Platform.isIOS) {
+      baseDirPath = (await getApplicationDocumentsDirectory()).path;
+    } else {
+      baseDirPath = (await getExternalStorageDirectory()).path;
+    }
     baseDirPath = '$baseDirPath/';
 
     _directory = Directory(path.join(baseDirPath, 'logs'));
@@ -101,8 +106,29 @@ class FileLoggerTree extends LogTree {
     }
 
     _fileDate = DateTime.now();
-    _file = File(
-        path.join(_directory.path, '${_fileDateFormat.format(_fileDate)}.log'));
+    int fileIndex = 0;
+    List<FileSystemEntity> files = _directory.listSync();
+    if (files.isNotEmpty) {
+      List<int> indexList = files.map((FileSystemEntity file) {
+        List<String> stringList =
+            path.basenameWithoutExtension(file.path).split('_');
+        if (stringList[0] == '${_fileDateFormat.format(_fileDate)}') {
+          int temp = int.parse(stringList[1]);
+          return temp;
+        }
+      }).toList();
+      if (indexList != null) {
+        indexList.sort();
+        fileIndex = indexList.last;
+      }
+    }
+
+    _file = File(path.join(_directory.path,
+        '${_fileDateFormat.format(_fileDate)}_$fileIndex.txt'));
+    if (_file.lengthSync() > 1000000) {
+      _file = File(path.join(_directory.path,
+          '${_fileDateFormat.format(_fileDate)}_${fileIndex + 1}.txt'));
+    }
   }
 
   @override
@@ -111,7 +137,9 @@ class FileLoggerTree extends LogTree {
   @override
   void log(String level, String msg,
       {String tag, Object ex, StackTrace stacktrace}) {
-    _logAsync(level, msg, tag: tag, ex: ex, stacktrace: stacktrace);
+    String logTag = tag ?? LogTree.getTag();
+
+    _logAsync(level, msg, tag: logTag, ex: ex, stacktrace: stacktrace);
   }
 
   void _logAsync(String level, String msg,
