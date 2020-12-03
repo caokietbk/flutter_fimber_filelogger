@@ -108,7 +108,8 @@ class FileLoggerTree extends LogTree {
     _fileDate = DateTime.now();
     int fileIndex = 0;
     //get the list of files
-    List<FileSystemEntity> files = _directory.listSync();
+    List<FileSystemEntity> files =
+        await FileLoggerUtils.listDirContentsAsync(_directory);
     if (files.isNotEmpty) {
       //this map method will return a list of exist index of "today file"
       List<int> indexList = files.map((FileSystemEntity file) {
@@ -131,7 +132,7 @@ class FileLoggerTree extends LogTree {
 
     _file = File(path.join(_directory.path,
         '${_fileDateFormat.format(_fileDate)}_$fileIndex.txt'));
-        //if file > 1MB create new file with index = index + 1
+    //if file > 1MB create new file with index = index + 1
     if (_file.existsSync() && _file.lengthSync() > 1000000) {
       _file = File(path.join(_directory.path,
           '${_fileDateFormat.format(_fileDate)}_${fileIndex + 1}.txt'));
